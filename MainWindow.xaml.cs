@@ -44,13 +44,9 @@ public partial class MainWindow : Window
     private void UpdateThemeRadioButtons()
     {
         using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize");
-        if (key != null)
-        {
-            var appsUseLight = key.GetValue("AppsUseLightTheme") as int?;
-            if (appsUseLight == 1) ThemeLightRadio.IsChecked = true;
-            else ThemeDarkRadio.IsChecked = true;
-        }
-        else ThemeDarkRadio.IsChecked = true;
+        bool isLight = (key?.GetValue("AppsUseLightTheme") as int?) == 1;
+        ThemeLightRadio.IsChecked = isLight;
+        ThemeDarkRadio.IsChecked = !isLight;
     }
     private async void ChangeFromUrl_Click(object sender, RoutedEventArgs e)
     {
@@ -82,12 +78,12 @@ public partial class MainWindow : Window
             }
             else
             {
-                var saveDir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "InterJava-Programs", "wallpaperchng");
+                var saveDir = Path.Join(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "OrangStudio", "OrangWallpapers");
                 Directory.CreateDirectory(saveDir);
-                
+
                 var ext = pathOrUrl.Contains('.') ? pathOrUrl.Split('.').Last() : "jpg";
                 var filename = $"img{Random.Shared.Next(1000, 9999)}.{ext}";
-                var savePath = Path.Combine(saveDir, filename);
+                var savePath = Path.Join(saveDir, filename);
 
                 var bytes = await client.GetByteArrayAsync(pathOrUrl);
                 await File.WriteAllBytesAsync(savePath, bytes);
@@ -96,7 +92,7 @@ public partial class MainWindow : Window
                 StatusText.Text = "Success (Downloaded)";
             }
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is HttpRequestException or IOException or InvalidOperationException or TaskCanceledException or UnauthorizedAccessException)
         {
             StatusText.Text = "Failed: " + ex.Message;
         }
@@ -108,7 +104,7 @@ public partial class MainWindow : Window
     private void Theme_Checked(object sender, RoutedEventArgs e)
     {
         if (!IsLoaded) return;
-        bool isLight = ThemeLightRadio.IsChecked == true;
+        bool isLight = ThemeLightRadio.IsChecked ?? false;
         using var key = Microsoft.Win32.Registry.CurrentUser.OpenSubKey(@"Software\Microsoft\Windows\CurrentVersion\Themes\Personalize", true);
         if (key != null)
         {
